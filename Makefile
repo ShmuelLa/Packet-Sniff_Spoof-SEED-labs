@@ -11,7 +11,7 @@ git:
 	git push
 
 ping:
-	$(CC) myping.c $(CFLAG) ping.o
+	$(CC) hw4ping.c $(CFLAG) ping.o
 	sudo ./ping.o
 
 sniff:
