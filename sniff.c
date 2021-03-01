@@ -40,22 +40,27 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
         struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethheader) + ip_hdr_len);
         int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
         if (ip->iph_protocol == IPPROTO_ICMP) {
-            printf("No.: %d | Protocol: ICMP | ", p_count);
-            p_count++;
-            printf("SRC_IP: %s | ", inet_ntoa(ip->iph_sourceip));  
-            printf("DST_IP: %s | ", inet_ntoa(ip->iph_destip)); 
-            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) {
-                printf("Type: Reply");
+            
+            if ((strcmp(inet_ntoa(ip->iph_sourceip), "8.8.8.8") == 0 || strcmp(inet_ntoa(ip->iph_sourceip), "10.0.2.5") == 0) 
+            && (strcmp(inet_ntoa(ip->iph_destip), "8.8.8.8") == 0 || strcmp(inet_ntoa(ip->iph_destip), "10.0.2.5") == 0)) {
+                printf("No.: %d | Protocol: ICMP | ", p_count);
+                p_count++;
+                printf("SRC_IP: %s | ", inet_ntoa(ip->iph_sourceip));  
+                printf("DST_IP: %s | ", inet_ntoa(ip->iph_destip)); 
+                if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) {
+                    printf("Type: Reply");
+                }
+                if ((unsigned int)(icmph->type) == ICMP_ECHO) {
+                    printf("Type: Request");
+                }
+                printf(" | Code: %d | ", (unsigned int)(icmph->code));
+                printf("Checksum %d \n",ntohs(icmph->checksum));
+                printf("Data: ");
+                printf("%s", packet + icmp_header_len);
+                printf("\n");
+                return;
             }
-            if ((unsigned int)(icmph->type) == ICMP_ECHO) {
-                printf("Type: Request");
-            }
-            printf(" | Code: %d | ", (unsigned int)(icmph->code));
-            printf("Checksum %d \n",ntohs(icmph->checksum));
-            printf("Data: ");
-            printf("%s", packet + icmp_header_len);
-            printf("\n");
-            return;
+
         }
     }
 }
