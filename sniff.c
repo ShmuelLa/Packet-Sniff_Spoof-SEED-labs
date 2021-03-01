@@ -44,17 +44,20 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
         if (ip->iph_protocol == IPPROTO_TCP) {
             printf("No.: %d | Protocol: ICMP | ", p_count);
             printf("SRC_PORT %u | ",ntohs(tcph->source));
-            printf("DST_PORT %u | ",ntohs(tcph->dest));
+            printf("DST_PORT %u ",ntohs(tcph->dest));
+            printf("\n");
             p_count++;
             printf("SRC_IP: %s | ", inet_ntoa(ip->iph_sourceip));  
             printf("DST_IP: %s | ", inet_ntoa(ip->iph_destip)); 
+            /**
             if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) {
                 printf("Type: Reply");
             }
             if ((unsigned int)(icmph->type) == ICMP_ECHO) {
                 printf("Type: Request");
             }
-            printf(" | Code: %d | ", (unsigned int)(icmph->code));
+            */
+            printf("Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum %d \n",ntohs(icmph->checksum));
             printf("Data: ");
             printf("%s", packet + icmp_header_len);
