@@ -41,6 +41,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
         struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethheader) + ip_hdr_len);
         int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
         struct tcphdr *tcph = (struct tcphdr*)(packet + ip_hdr_len + sizeof(struct ethhdr));
+        printf("%s", packet + sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph);
         if (ip->iph_protocol == IPPROTO_TCP) {
             printf("No.: %d | Protocol: ICMP | ", p_count);
             printf("SRC_PORT %u | ",ntohs(tcph->source));
