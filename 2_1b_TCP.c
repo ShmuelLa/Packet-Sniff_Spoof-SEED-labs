@@ -73,7 +73,7 @@ int main() {
     struct bpf_program fp;
     bpf_u_int32 net = 0;
     char errbuf[PCAP_ERRBUF_SIZE];
-    char filter_exp[] = "tcp port 23";    
+    char filter_exp[] = "tcp portrange dst 10-100";    
     handle = pcap_open_live("enp0s3", BUFSIZ, 1, 1000, errbuf);
     if (handle == NULL) {
         perror("Live session opening error");
