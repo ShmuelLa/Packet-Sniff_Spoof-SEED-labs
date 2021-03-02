@@ -39,8 +39,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
         int ip_hdr_len = ip->iph_ihl * 4;
         struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethheader) + ip_hdr_len);
         int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
-        if (ip->iph_protocol == IPPROTO_ICMP) {
-            
+        if (ip->iph_protocol == IPPROTO_ICMP) {   
             if ((strcmp(inet_ntoa(ip->iph_sourceip), "8.8.8.8") == 0 || strcmp(inet_ntoa(ip->iph_sourceip), "10.0.2.5") == 0) 
             && (strcmp(inet_ntoa(ip->iph_destip), "8.8.8.8") == 0 || strcmp(inet_ntoa(ip->iph_destip), "10.0.2.5") == 0)) {
                 printf("No.: %d | Protocol: ICMP | ", p_count);
