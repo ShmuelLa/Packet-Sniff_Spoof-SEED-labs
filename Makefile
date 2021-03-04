@@ -4,7 +4,6 @@ CFLAG = -Wall -Wextra -g -o
 all: 
 	$(CC) hw4ping.c $(CFLAG) ping.o
 	$(CC) sniff.c $(CFLAG) sniff.o -lpcap
-	$(CC) sniff2.c $(CFLAG) sniff2.o -lpcap
 
 git:
 	git add -A
