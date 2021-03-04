@@ -31,27 +31,25 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf("\n");
             printf("[+] SRC_IP: %s | ", inet_ntoa(src_ip.sin_addr));  
             printf("DST_IP: %s | ", inet_ntoa(dst_ip.sin_addr)); 
-            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply");
+            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply\n");
             if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("Type: Request\n");
-            printf("[+]  Code: %d | ", (unsigned int)(icmph->code));
+            printf("[+] Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum %d \n", ntohs(icmph->checksum));
-            printf("Payload: \n");
+            printf("[+] Payload: \n");
             printf("%s", packet + icmp_header_len);
             printf("\n\n");
             return;
             break;
         case 6:
             p_count++;
-            printf("[+] No.: %d | Protocol: ICMP | ", p_count);
-            printf("SRC_PORT %u | ", ntohs(tcph->source));
-            printf("DST_PORT %u ", ntohs(tcph->dest));
+            printf("[+] No.: %d | Protocol: TCP | ", p_count);
             printf("SRC_PORT %u | ", ntohs(tcph->source));
             printf("DST_PORT %u ", ntohs(tcph->dest));
             printf("\n");
             printf("[+] SRC_IP: %s | ", inet_ntoa(src_ip.sin_addr));  
             printf("DST_IP: %s | ", inet_ntoa(dst_ip.sin_addr));
             printf("Checksum %d \n", ntohs(tcph->check));
-            printf("Payload: \n");
+            printf("[+] Payload: \n");
             printf("%s", packet + sizeof(struct ethhdr) + ip_hdr_len + tcph->doff*4);
             printf("\n\n");
         default:
