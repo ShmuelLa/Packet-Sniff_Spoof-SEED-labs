@@ -31,6 +31,38 @@ struct ipheader {
   struct  in_addr    iph_destip;   //Destination IP address 
 };
 
+void print_content(const u_char* data , int Size) {
+    int i , j;
+    for(i=0 ; i < Size ; i++) {
+        if( i!=0 && i%16==0)   //if one line of hex printing is complete...
+        {
+            for(j=i-16 ; j<i ; j++) {
+                if(data[j]>=32 && data[j]<=128) printf("%c", (unsigned char)data[j]); //if its a number or alphabet
+                else printf("."); //otherwise print a dot
+            }
+            printf("\n");
+        } 
+        if(i%16==0) printf("   ");
+            printf(" %02X",(unsigned int)data[i]);      
+        if( i==Size-1)  //print the last spaces
+        {
+            for(j=0;j<15-i%16;j++) {
+              printf("   "); //extra spaces
+            }
+            printf("         ");
+            for(j=i-i%16 ; j<=i ; j++) {
+                if(data[j]>=32 && data[j]<=128) {
+                  printf("%c",(unsigned char)data[j]);
+                }
+                else {
+                  printf(".");
+                }
+            }
+            printf("\n" );
+        }
+    }
+}
+
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
     (void)args;
     (void)header;
@@ -38,9 +70,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     if (ntohs(eth->ether_type) == 0x0800) { // 0x0800 or 2048 is IP type
         struct ipheader * ip = (struct ipheader *)(packet + sizeof(struct ethheader)); 
         int ip_hdr_len = ip->iph_ihl * 4;
-        struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethheader) + ip_hdr_len);
-        int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
         struct tcphdr *tcph = (struct tcphdr*)(packet + ip_hdr_len + sizeof(struct ethhdr));
+        int tcp_hdr_len = sizeof(struct ethhdr) + ip_hdr_len + tcph->doff*4;
         if (ip->iph_protocol == IPPROTO_TCP) {
             printf("No.: %d | Protocol: ICMP | ", p_count);
             printf("SRC_PORT %u | ",ntohs(tcph->source));
@@ -49,19 +80,9 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             p_count++;
             printf("SRC_IP: %s | ", inet_ntoa(ip->iph_sourceip));  
             printf("DST_IP: %s | ", inet_ntoa(ip->iph_destip)); 
-            /**
-            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) {
-                printf("Type: Reply");
-            }
-            if ((unsigned int)(icmph->type) == ICMP_ECHO) {
-                printf("Type: Request");
-            }
-            */
-            printf("Code: %d | ", (unsigned int)(icmph->code));
-            printf("Checksum %d \n",ntohs(icmph->checksum));
             printf("Data: ");
-            printf("%s", packet + icmp_header_len);
             printf("\n");
+            print_content(packet + tcp_hdr_len, sizeof(packet) - tcp_hdr_len);
             return;
         }
     }
