@@ -16,33 +16,33 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     struct iphdr *ip = (struct iphdr*)(packet + sizeof(struct ethhdr)); 
     struct ethheader *eth = (struct ethheader *)packet;
     int ip_hdr_len = ip->ihl*4;
-    struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethhdr) + ip_hdr_len);
     switch (ip->protocol) {
-        case 1: ;
+        case 1:
+            p_count++;
+            struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethhdr) + ip_hdr_len);
             int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
             struct tcphdr *tcph = (struct tcphdr*)(packet + ip_hdr_len + sizeof(struct ethhdr));
-            printf("No.: %d | Protocol: ICMP | ", p_count);
+            printf("[+] No.: %d | Protocol: ICMP | ", p_count);
             printf("SRC_PORT %u | ",ntohs(tcph->source));
             printf("DST_PORT %u ",ntohs(tcph->dest));
             printf("\n");
-            p_count++;
-            uint32_t src_ip = ip->saddr;
-            uint32_t dst_ip = ip->daddr;
-            printf("SRC_IP: %d | ", src_ip);  
-            printf("DST_IP: %d | ", dst_ip); 
-            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) {
-                printf("Type: Reply");
-            }
-            if ((unsigned int)(icmph->type) == ICMP_ECHO) {
-                printf("Type: Request");
-            }
-            printf("Code: %d | ", (unsigned int)(icmph->code));
+            struct sockaddr_in src_ip, dst_ip;
+            src_ip.sin_addr.s_addr = ip->saddr;
+            dst_ip.sin_addr.s_addr = ip->daddr;
+            printf("[+] SRC_IP: %d | ", inet_ntoa(src_ip.sin_addr));  
+            printf("DST_IP: %d | ", inet_ntoa(dst_ip.sin_addr)); 
+            if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply");
+            if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("Type: Request");
+            printf(" | Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum %d \n",ntohs(icmph->checksum));
             printf("Data: ");
             printf("%s", packet + icmp_header_len);
             printf("\n");
+            printf("\n");
             return;
             break;
+        case 6:
+            p_count++;
         default:
             break;
     }
@@ -54,7 +54,7 @@ int main() {
     bpf_u_int32 net = 0;
     char errbuf[PCAP_ERRBUF_SIZE];
     char filter_exp[] = "icmp";    
-    handle = pcap_open_live("enp0s3", 65536, 1, 0, errbuf);
+    handle = pcap_open_live("br-1a9996b508c9", 65536, 1, 0, errbuf);
     if (handle == NULL) {
         perror("Live session opening error");
     }
