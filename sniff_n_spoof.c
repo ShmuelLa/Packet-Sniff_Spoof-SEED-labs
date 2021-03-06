@@ -11,7 +11,6 @@
 #include <unistd.h>
 
 #define ICMP_HDRLEN 8 
-#define IP4_HDRLEN 20
 static int p_count = 1;
 static char filter_exp[] = "icmp";
 static char ip_to_spoof_icmp[] = "1.2.3.4";
@@ -40,18 +39,20 @@ void spoof_icmp(char target_ip[], int seq) {
     printf("################################\n");
     printf("       Spoofing ICMP Packet\n");
     printf("################################\n\n");
+    int sock = -1;
+    if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
+        perror("socket() failed");
+        return;
+    }
     char data[IP_MAXPACKET] = "SPOOFED!\n";
     int datalen = strlen(data) + 1;
     struct ip iphdr;
     struct icmp icmphdr;
     iphdr.ip_v = 4;
-    // IP header length (4 bits): Number of 32-bit words in header = 5
-    iphdr.ip_hl = IP4_HDRLEN / 4; // not the most correct
-    // Type of service (8 bits) - not using, zero it.
-    iphdr.ip_tos = 0;
-    // Total length of datagram (16 bits): IP header + ICMP header + ICMP data
-    iphdr.ip_len = htons (IP4_HDRLEN + ICMP_HDRLEN + datalen);
-    // ID sequence number (16 bits): not in use since we do not allow fragmentation
+    iphdr.ip_hl = (sizeof(struct ip)) / 4; //IP header length
+    iphdr.ip_tos = 0; //Type of service, not using
+    iphdr.ip_len = htons(sizeof(struct ip) + ICMP_HDRLEN + datalen); // Total length (16 bits): IP header + ICMP header + ICMP data
+    //ID sequence number (16 bits): not in use since we do not allow fragmentation
     iphdr.ip_id = 0;
     // Fragmentation bits - we are sending short packets below MTU-size and without 
     int ip_flags[4];
@@ -65,9 +66,8 @@ void spoof_icmp(char target_ip[], int seq) {
     ip_flags[3] = 0;
     iphdr.ip_off = htons ((ip_flags[0] << 15) + (ip_flags[1] << 14)
                       + (ip_flags[2] << 13) +  ip_flags[3]);
-    // TTL (8 bits): 128 - you can play with it: set to some reasonable number
     iphdr.ip_ttl = 128;
-    // Upper protocol (8 bits): ICMP is protocol number 1
+    //Upper protocol (8 bits): ICMP is protocol number 1
     iphdr.ip_p = IPPROTO_ICMP;
     if (inet_pton (AF_INET, ip_to_spoof_icmp, &(iphdr.ip_src)) <= 0) {
         perror("inet_pton() failed");
@@ -78,7 +78,7 @@ void spoof_icmp(char target_ip[], int seq) {
         return;
     }
     iphdr.ip_sum = 0;
-    iphdr.ip_sum = calculate_checksum((unsigned short *) &iphdr, IP4_HDRLEN);
+    iphdr.ip_sum = calculate_checksum((unsigned short *) &iphdr, iphdr.ip_len);
     // Message Type (8 bits): ICMP_ECHO_REQUEST
     icmphdr.icmp_type = ICMP_ECHO;
     // Message Code (8 bits): echo request
@@ -93,13 +93,13 @@ void spoof_icmp(char target_ip[], int seq) {
     // Combine the packet 
     char packet[IP_MAXPACKET];
     // First, IP header.
-    memcpy (packet, &iphdr, IP4_HDRLEN);
+    memcpy (packet, &iphdr, iphdr.ip_len);
     // Next, ICMP header
-    memcpy ((packet + IP4_HDRLEN), &icmphdr, ICMP_HDRLEN);
+    memcpy ((packet + iphdr.ip_len), &icmphdr, ICMP_HDRLEN);
     // After ICMP header, add the ICMP data.
-    memcpy (packet + IP4_HDRLEN + ICMP_HDRLEN, data, datalen);
+    memcpy (packet + iphdr.ip_len + ICMP_HDRLEN, data, datalen);
     // Calculate the ICMP header checksum
-    icmphdr.icmp_cksum = calculate_checksum((unsigned short *) (packet + IP4_HDRLEN), ICMP_HDRLEN + datalen);
+    icmphdr.icmp_cksum = calculate_checksum((unsigned short *) (packet + iphdr.ip_len), ICMP_HDRLEN + datalen);
     memcpy ((packet), &icmphdr, ICMP_HDRLEN);
     struct sockaddr_in dest_in;
     memset (&dest_in, 0, sizeof (struct sockaddr_in));
@@ -107,11 +107,6 @@ void spoof_icmp(char target_ip[], int seq) {
     dest_in.sin_addr.s_addr = iphdr.ip_dst.s_addr;
     //dest_in.sin_addr.s_addr = inet_addr("8.8.8.8");
     // Create raw socket for IP-RAW (make IP-header by yourself)
-    int sock = -1;
-    if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
-        perror("socket() failed");
-        return;
-    }
     // This socket option IP_HDRINCL says that we are building IPv4 header by ourselves, and
     // the networking in kernel is in charge only for Ethernet header.
     // Send the packet using sendto() for sending datagrams.
@@ -119,8 +114,9 @@ void spoof_icmp(char target_ip[], int seq) {
     if (setsockopt(sock, IPPROTO_IP, IP_HDRINCL,&flagOne,sizeof(flagOne)) == -1) {
         perror("setsockopt() failed");
     }
-    if (sendto (sock, packet, IP4_HDRLEN + ICMP_HDRLEN + datalen, 0, (struct sockaddr *) &dest_in, sizeof (dest_in)) == -1) {
-        perror("sendto() failed with error: %d");
+    printf("%d",iphdr.ip_len);
+    if (sendto (sock, packet, iphdr.ip_len + ICMP_HDRLEN + datalen, 0, (struct sockaddr *) &dest_in, sizeof (dest_in)) == -1) {
+        perror("sendto() failed");
         return;
     }
     /**
