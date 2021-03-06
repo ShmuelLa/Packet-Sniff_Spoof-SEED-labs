@@ -7,8 +7,10 @@
 #include <netinet/ip_icmp.h>
 #include <net/ethernet.h>
 #include <netinet/tcp.h>
+#include<netinet/udp.h>
 
 static int p_count = 1;
+static char filter_exp[] = "icmp";   
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
     (void)args;
@@ -17,6 +19,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     struct ethheader *eth = (struct ethheader *)packet;
     int ip_hdr_len = ip->ihl*4;
     struct tcphdr *tcph = (struct tcphdr*)(packet + ip_hdr_len + sizeof(struct ethhdr));
+    struct udphdr *udph = (struct udphdr*)(packet + ip_hdr_len  + sizeof(struct ethhdr));
     struct sockaddr_in src_ip, dst_ip;
     src_ip.sin_addr.s_addr = ip->saddr;
     dst_ip.sin_addr.s_addr = ip->daddr;
@@ -26,15 +29,15 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethhdr) + ip_hdr_len);
             int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
             printf("[+] No.: %d | Protocol: ICMP | ", p_count);
-            printf("SRC_PORT %u | ", ntohs(tcph->source));
-            printf("DST_PORT %u ", ntohs(tcph->dest));
+            printf("SRC_PORT %u | ", ntohs(udph->uh_sport));
+            printf("DST_PORT %u ", ntohs(udph->uh_dport));
             printf("\n");
             printf("[+] SRC_IP: %s | ", inet_ntoa(src_ip.sin_addr));  
             printf("DST_IP: %s | ", inet_ntoa(dst_ip.sin_addr)); 
             if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply\n");
             if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("Type: Request\n");
             printf("[+] Code: %d | ", (unsigned int)(icmph->code));
-            printf("Checksum %d \n", ntohs(icmph->checksum));
+            printf("Checksum: %d | Seq: \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: \n");
             printf("%s", packet + icmp_header_len);
             printf("\n\n");
@@ -61,8 +64,7 @@ int main() {
     pcap_t *handle;
     struct bpf_program fp;
     bpf_u_int32 net = 0;
-    char errbuf[PCAP_ERRBUF_SIZE];
-    char filter_exp[] = "icmp or tcp";    
+    char errbuf[PCAP_ERRBUF_SIZE]; 
     handle = pcap_open_live("br-1a9996b508c9", 65536, 1, 0, errbuf);
     if (handle == NULL) {
         perror("Live session opening error");
