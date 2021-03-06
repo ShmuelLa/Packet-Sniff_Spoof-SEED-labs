@@ -37,7 +37,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply\n");
             if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("Type: Request\n");
             printf("[+] Code: %d | ", (unsigned int)(icmph->code));
-            printf("Checksum: %d | Seq: \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
+            printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: \n");
             printf("%s", packet + icmp_header_len);
             printf("\n\n");
