@@ -10,7 +10,14 @@
 #include<netinet/udp.h>
 
 static int p_count = 1;
-static char filter_exp[] = "icmp";   
+static char filter_exp[] = "icmp";
+char ip_to_spoof_icmp[] = "1.2.3.4";
+
+void spoof_icmp() {
+    printf("\n\n################################");
+    printf("       Spoofing ICMP Packet");
+    printf("################################\n\n ");
+}
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
     (void)args;
@@ -35,7 +42,9 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf(" | Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: %s \n\n", packet + icmp_header_len);
-            return;
+            if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp)) {
+                spoof_icmp();
+            }
             break;
         case 6:
             p_count++;
@@ -45,6 +54,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf("DST_IP: %s | ", inet_ntoa(dst_ip.sin_addr));
             printf("Checksum %d \n", ntohs(tcph->check));
             printf("[+] Payload: %s \n\n", packet + sizeof(struct ethhdr) + ip_hdr_len + tcph->doff*4);
+            break;
         default:
             break;
     }
