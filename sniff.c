@@ -19,7 +19,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
     struct ethheader *eth = (struct ethheader *)packet;
     int ip_hdr_len = ip->ihl*4;
     struct tcphdr *tcph = (struct tcphdr*)(packet + ip_hdr_len + sizeof(struct ethhdr));
-    struct udphdr *udph = (struct udphdr*)(packet + ip_hdr_len  + sizeof(struct ethhdr));
+    //struct udphdr *udph = (struct udphdr*)(packet + ip_hdr_len  + sizeof(struct ethhdr));
     struct sockaddr_in src_ip, dst_ip;
     src_ip.sin_addr.s_addr = ip->saddr;
     dst_ip.sin_addr.s_addr = ip->daddr;
@@ -29,11 +29,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethhdr) + ip_hdr_len);
             int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
             printf("[+] No.: %d | Protocol: ICMP | ", p_count);
-            printf("SRC_PORT %u | ", ntohs(udph->uh_sport));
-            printf("DST_PORT %u ", ntohs(udph->uh_dport));
-            printf("\n");
-            printf("[+] SRC_IP: %s | ", inet_ntoa(src_ip.sin_addr));  
-            printf("DST_IP: %s | ", inet_ntoa(dst_ip.sin_addr)); 
+            printf("SRC_IP: %s | DST_IP: %s ", inet_ntoa(src_ip.sin_addr), inet_ntoa(dst_ip.sin_addr));  
             if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("Type: Reply\n");
             if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("Type: Request\n");
             printf("[+] Code: %d | ", (unsigned int)(icmph->code));
