@@ -65,7 +65,7 @@ int main() {
     struct bpf_program fp;
     bpf_u_int32 net = 0;
     char errbuf[PCAP_ERRBUF_SIZE]; 
-    handle = pcap_open_live("br-1a9996b508c9", 65536, 1, 0, errbuf);
+    handle = pcap_open_live("br-1a9996b508c9", 65536, 1, 100, errbuf);
     if (handle == NULL) {
         perror("Live session opening error");
     }
