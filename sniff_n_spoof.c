@@ -14,8 +14,8 @@ static char filter_exp[] = "icmp";
 char ip_to_spoof_icmp[] = "1.2.3.4";
 
 void spoof_icmp() {
-    printf("\n\n################################");
-    printf("       Spoofing ICMP Packet");
+    printf("\n\n################################\n");
+    printf("       Spoofing ICMP Packet\n");
     printf("################################\n\n ");
 }
 
@@ -42,7 +42,7 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf(" | Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: %s \n\n", packet + icmp_header_len);
-            if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp)) {
+            if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp) == 0) {
                 spoof_icmp();
             }
             break;
