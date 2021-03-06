@@ -471,7 +471,6 @@ struct iphdr* CreateIPHeader(char* src_ip, char* dst_ip)
 	struct iphdr* ip_header;
 
 	ip_header = (struct iphdr* )malloc(sizeof(struct iphdr));
-
 	ip_header->version = 4;
 	ip_header->ihl = (sizeof(struct iphdr))/4 ;
 	ip_header->tos = 0;
