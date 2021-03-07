@@ -21,10 +21,8 @@ def arp_pois(pkt):
 def print_pkt(pkt):
     if ARP in pkt:
         pkt.show() 
-        print("zibi")
     elif pkt[2].type == 8:
         spoof(pkt)
         pkt.show() 
        
-
 pkt = sniff(iface="br-1a9996b508c9", filter="icmp or arp", prn=print_pkt)
