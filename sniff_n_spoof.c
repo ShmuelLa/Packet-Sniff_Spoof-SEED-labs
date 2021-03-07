@@ -56,10 +56,10 @@ void spoof_icmp(struct iphdr *target_ip_hdr) {
         new_ip->saddr = target_ip_hdr->daddr;
         new_ip->daddr = target_ip_hdr->saddr;
         new_ip->ttl = 50;
-        struct sockaddr_in d_addr;// address for sendto
+        struct sockaddr_in d_addr;
         bzero(&d_addr, sizeof(d_addr));
         d_addr.sin_family = AF_INET;
-        d_addr.sin_addr = *(struct in_addr *) &target_ip_hdr->daddr;
+        d_addr.sin_addr = *(struct in_addr *) &new_ip->daddr;
         int sd = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
         if (sd < 0) {
             perror("failed to create socket");
@@ -68,7 +68,7 @@ void spoof_icmp(struct iphdr *target_ip_hdr) {
         if (setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) != 0) {
             perror("failed to set option");
         }
-        if (sendto(sd, target_ip_hdr, ntohs(new_ip->tot_len), 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
+        if (sendto(sd, new_ip, ntohs(new_ip->tot_len), 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
             perror("failed to sendto\n");
         } 
         close(sd);

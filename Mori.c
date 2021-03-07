@@ -88,21 +88,12 @@ int main() {
     char errbuf[PCAP_ERRBUF_SIZE];
     struct bpf_program fp;
     memset((void *) &fp, 0, sizeof(fp));
-
     char filter_exp[] = "icmp";//filter
     bpf_u_int32 net;
-
-// Step 1: Open live pcap session on NIC with name br-7a6fd6e23549
-    handle = pcap_open_live("br-7a6fd6e23549", BUFSIZ, 1, 1000, errbuf);
-
-// Step 2: Compile filter_exp into BPF psuedo-code
+    handle = pcap_open_live("br-1a9996b508c9", BUFSIZ, 1, 1000, errbuf);
     pcap_compile(handle, &fp, filter_exp, 0, net);
-
     pcap_setfilter(handle, &fp);
-
-// Step 3: Capture packets
     pcap_loop(handle, -1, got_packet, NULL);
-
     pcap_close(handle);   //Close the handle
     return 0;
 }
@@ -148,19 +139,13 @@ void spoof_reply(struct ipheader *ip) {
         new_ip->iph_sourceip = ip->iph_destip;
         new_ip->iph_destip = ip->iph_sourceip;
         new_ip->iph_ttl = 50; // Rest the TTL field
-        sent_ip(new_ip, ntohs(new_ip->iph_len));
-    }
-}
-
-// Send out the spoofed ICMP packet
-void sent_ip(struct ipheader *ip, size_t size) {
-/****************************
+        /****************************
 *** initialize the socket ****
 ******************************/
     struct sockaddr_in d_addr;// address for sendto
     bzero(&d_addr, sizeof(d_addr));
     d_addr.sin_family = AF_INET;
-    d_addr.sin_addr = ip->iph_destip;
+    d_addr.sin_addr = new_ip->iph_destip;
 
 
     int sd = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
@@ -175,14 +160,16 @@ void sent_ip(struct ipheader *ip, size_t size) {
 
 
     // sent reply
-    if (sendto(sd, ip, size, 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
+    if (sendto(sd, new_ip, ntohs(new_ip->iph_len), 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
         perror("failed to sendto\n");
         exit(EXIT_FAILURE);
     } else {
         printf("reply sent succesfully\n");
     }
     close(sd);
+    }
 }
+
 
 
 
