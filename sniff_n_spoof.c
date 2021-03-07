@@ -37,65 +37,57 @@ unsigned short calculate_checksum(unsigned short * paddress, int len) {
 	return answer;
 }
 
-void spoof_icmp(char target_ip[], struct icmphdr *target_icmp_hdr) {
+void spoof_icmp(struct icmphdr *target_icmp_hdr, struct ip *target_ip_hdr) {
     printf("################################\n");
     printf("       Spoofing ICMP Packet\n");
     printf("################################\n\n");
-
-    int sd;
+    int sock;
     struct sockaddr_in sin;
     char buf[1024];
+    int on = 1;
 
     // Create the IP/ICMP headers and attach to the buffer
     struct ip *ip = (struct ip *)buf;
     struct icmp *icmp = (struct icmp *) (ip + 1);
-    const int on = 1;
-
     // Allocate buffer size
     bzero(buf, sizeof(buf)); 
 
-    // IP header
-    ip->ip_v = 4;
-    ip->ip_hl = 5;
-    ip->ip_tos = 0;
-    ip->ip_len = htons(sizeof(buf));
-    ip->ip_id = 0;
-    ip->ip_off = htons(0);
-    ip->ip_ttl = 128; // 255 TTL
-    ip->ip_p = 1; // ICMP
+    ip->ip_v = target_ip_hdr->ip_v;
+    ip->ip_hl = target_ip_hdr->ip_hl;
+    ip->ip_tos = target_ip_hdr->ip_tos;
+    ip->ip_len = target_ip_hdr->ip_len;
+    ip->ip_id = target_ip_hdr->ip_id;
+    ip->ip_off = target_ip_hdr->ip_off;
+    ip->ip_ttl = target_ip_hdr->ip_ttl; // 255 TTL
+    ip->ip_p = target_ip_hdr->ip_p; // ICMP
     ip->ip_sum = 0; // Don't care about this
-    ip->ip_src.s_addr = inet_addr(ip_to_spoof_icmp);
-    ip->ip_dst.s_addr = inet_addr(target_ip);
+    ip->ip_src = target_ip_hdr->ip_dst;
+    ip->ip_dst = target_ip_hdr->ip_src;
+
+    sin.sin_family = AF_INET;
+	sin.sin_addr = ip->ip_dst;
 
     // ICMP header
     icmp->icmp_type = 0;
     icmp->icmp_code = 0;
-    icmp->icmp_id = target_icmp_hdr->un.echo.id;
+    //icmp->icmp_id = target_icmp_hdr->un.echo.id;
     icmp->icmp_seq = target_icmp_hdr->un.echo.sequence;
     icmp->icmp_cksum = calculate_checksum((unsigned short *)icmp, 8);
 
-    /* Create a raw socket with IP protocol. The IPPROTO_RAW parameter
-    * tells the sytem that the IP header is already included;
-    * this prevents the OS from adding another IP header.  */
-    sd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-    if (sd < 0) {
-    perror("socket() error"); exit(-1);
+    sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    if (sock < 0) {
+        perror("socket() error");
+        return;
     }
-
-    /* This data structure is needed when sending the packets
-    * using sockets. Normally, we need to fill out several
-    * fields, but for raw sockets, we only need to fill out
-    * this one field */
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = ip->ip_dst.s_addr;
-
-
-    /* Send out the IP packet.
-    * ip_len is the actual size of the packet. */
-    if (sendto(sd, buf, sizeof(buf), 0, (struct sockaddr *)&sin, 
-            sizeof(sin)) < 0)  {
-    perror("sendto() error"); exit(-1);
-    }
+    if (setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0)
+	{
+		perror("setsockopt() for IP_HDRINCL error");
+        return;
+	}
+    if (sendto(sock, buf, ntohs(ip->ip_len) - 28, 0, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+		perror("sendto() error");
+        return;
+	}
 }
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
@@ -116,15 +108,16 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             struct icmphdr *icmph = (struct icmphdr *)(packet + sizeof(struct ethhdr) + ip_hdr_len);
             int icmp_header_len =  sizeof(struct ethhdr) + ip_hdr_len + sizeof icmph;
             printf("[+] No.: %d | Protocol: ICMP | ", p_count);
-            printf("SRC_IP: %s | DST_IP: %s \n", inet_ntoa(src_ip.sin_addr), inet_ntoa(dst_ip.sin_addr));  
+            printf("SRC_IP: %s | ", inet_ntoa(src_ip.sin_addr)); 
+            printf("DST_IP: %s | \n", inet_ntoa(dst_ip.sin_addr));
             if ((unsigned int)(icmph->type) == ICMP_ECHOREPLY) printf("[+] Type: Reply");
             if ((unsigned int)(icmph->type) == ICMP_ECHO) printf("[+] Type: Request");
             printf(" | Code: %d | ", (unsigned int)(icmph->code));
             printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: %s \n\n", packet + icmp_header_len);
             if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp) == 0) {
-                //send_ping_response(ip->ip_dst, ip->ip_src, data_bk, data_size, icmp->checksum, icmp->id, icmp->seq);
-                spoof_icmp(inet_ntoa(src_ip.sin_addr) ,icmph);
+                struct ip *target_ip = (struct ip *) ip;
+                spoof_icmp(icmph, target_ip);
             }
             break;
         case 6:
