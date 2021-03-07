@@ -13,6 +13,7 @@
 #define ICMP_HDRLEN 8 
 static int p_count = 1;
 static char filter_exp[] = "icmp";
+static char capture_device[] = "br-1a9996b508c9";
 static char ip_to_spoof_icmp[] = "1.2.3.4";
 
 unsigned short calculate_checksum(unsigned short * paddress, int len) {
@@ -35,98 +36,84 @@ unsigned short calculate_checksum(unsigned short * paddress, int len) {
 	return answer;
 }
 
-void spoof_icmp(char target_ip[], int seq) {
+void spoof_icmp(char target_ip[], struct icmphdr *target_icmp_hdr) {
     printf("################################\n");
     printf("       Spoofing ICMP Packet\n");
     printf("################################\n\n");
+
+    char buffer[1500];
+    memset(buffer, 0, 1500);
+    struct icmphdr *icmp_hdr = (struct icmphdr *) (buffer + sizeof(struct iphdr));
+    struct iphdr *ip_hdr = (struct iphdr *) buffer;
+    icmp_hdr->type = 0;
+    icmp_hdr->un.echo.sequence= target_icmp_hdr->un.echo.sequence;
+    icmp_hdr->checksum = 0;
+    icmp_hdr->checksum = calculate_checksum((unsigned short *)icmp_hdr, sizeof(struct icmphdr));
+    ip_hdr->version = 4;
+    ip_hdr->ihl = 5;
+    ip_hdr->ttl = 20;
+    ip_hdr->saddr = inet_addr(ip_to_spoof_icmp);
+    ip_hdr->daddr = inet_addr(target_ip);
+    ip_hdr->protocol = IPPROTO_ICMP;
+    ip_hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct icmphdr));
+    struct sockaddr_in dest_in;
+    int enable = 1;
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable));
+    dest_in.sin_family = AF_INET;
+    dest_in.sin_addr = inet_aton(ip_hdr->daddr);
+    sendto(sock, ip, ntohs(ip->iph_len), 0, (struct sockaddr *)&dest_in, sizeof(dest_in));
+    close(sock);
+    return 0;
+
+
+
+
+
+
+
+
+
+    /**
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
     int sock = -1;
     if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
         perror("socket() failed");
         return;
     }
-    char data[IP_MAXPACKET] = "SPOOFED!\n";
-    int datalen = strlen(data) + 1;
-    struct ip iphdr;
-    struct icmp icmphdr;
-    iphdr.ip_v = 4;
-    iphdr.ip_hl = (sizeof(struct ip)) / 4; //IP header length
-    iphdr.ip_tos = 0; //Type of service, not using
-    iphdr.ip_len = htons(sizeof(struct ip) + ICMP_HDRLEN + datalen); // Total length (16 bits): IP header + ICMP header + ICMP data
-    //ID sequence number (16 bits): not in use since we do not allow fragmentation
-    iphdr.ip_id = 0;
-    // Fragmentation bits - we are sending short packets below MTU-size and without 
-    int ip_flags[4];
-    // Reserved bit
-    ip_flags[0] = 0;
-    // "Do not fragment" bit
-    ip_flags[1] = 0;
-    // "More fragments" bit
-    ip_flags[2] = 0;
-    // Fragmentation offset (13 bits)
-    ip_flags[3] = 0;
-    iphdr.ip_off = htons ((ip_flags[0] << 15) + (ip_flags[1] << 14)
-                      + (ip_flags[2] << 13) +  ip_flags[3]);
-    iphdr.ip_ttl = 128;
-    //Upper protocol (8 bits): ICMP is protocol number 1
-    iphdr.ip_p = IPPROTO_ICMP;
-    if (inet_pton (AF_INET, ip_to_spoof_icmp, &(iphdr.ip_src)) <= 0) {
-        perror("inet_pton() failed");
-        return;
-    }
-    if (inet_pton (AF_INET, target_ip, &(iphdr.ip_dst)) <= 0) {
-        perror("inet_pton() failed");
-        return;
-    }
-    iphdr.ip_sum = 0;
-    iphdr.ip_sum = calculate_checksum((unsigned short *) &iphdr, iphdr.ip_len);
-    // Message Type (8 bits): ICMP_ECHO_REQUEST
-    icmphdr.icmp_type = ICMP_ECHO;
-    // Message Code (8 bits): echo request
-    icmphdr.icmp_code = 0;
-    // Identifier (16 bits): some number to trace the response.
-    // It will be copied to the response packet and used to map response to the request sent earlier.
-    // Thus, it serves as a Transaction-ID when we need to make "ping"
-    icmphdr.icmp_id = 18; 
-    icmphdr.icmp_seq = seq;
-    // ICMP header checksum (16 bits): set to 0 not to include into checksum calculation
-    icmphdr.icmp_cksum = 0;
-    // Combine the packet 
-    char packet[IP_MAXPACKET];
-    // First, IP header.
-    memcpy (packet, &iphdr, iphdr.ip_len);
-    // Next, ICMP header
-    memcpy ((packet + iphdr.ip_len), &icmphdr, ICMP_HDRLEN);
-    // After ICMP header, add the ICMP data.
-    memcpy (packet + iphdr.ip_len + ICMP_HDRLEN, data, datalen);
-    // Calculate the ICMP header checksum
-    icmphdr.icmp_cksum = calculate_checksum((unsigned short *) (packet + iphdr.ip_len), ICMP_HDRLEN + datalen);
-    memcpy ((packet), &icmphdr, ICMP_HDRLEN);
-    struct sockaddr_in dest_in;
-    memset (&dest_in, 0, sizeof (struct sockaddr_in));
-    dest_in.sin_family = AF_INET;
-    dest_in.sin_addr.s_addr = iphdr.ip_dst.s_addr;
-    //dest_in.sin_addr.s_addr = inet_addr("8.8.8.8");
-    // Create raw socket for IP-RAW (make IP-header by yourself)
-    // This socket option IP_HDRINCL says that we are building IPv4 header by ourselves, and
-    // the networking in kernel is in charge only for Ethernet header.
-    // Send the packet using sendto() for sending datagrams.
-    const int flagOne = 1;
-    if (setsockopt(sock, IPPROTO_IP, IP_HDRINCL,&flagOne,sizeof(flagOne)) == -1) {
+    if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, capture_device, strnlen(capture_device, 20)) == -1) {
         perror("setsockopt() failed");
     }
-    printf("%d",iphdr.ip_len);
-    if (sendto (sock, packet, iphdr.ip_len + ICMP_HDRLEN + datalen, 0, (struct sockaddr *) &dest_in, sizeof (dest_in)) == -1) {
+    char data[] = "SPOOFED!\n";
+    struct iphdr* ip_hdr = (struct iphdr*) (sizeof(struct icmphdr));
+    struct icmp icmphdr;
+    int datalen = strlen(data);
+    char *packet = datalen + sizeof(struct iphdr) + sizeof(struct icmphdr);
+    ip_hdr->version = 4;
+    ip_hdr->ihl = (sizeof(struct iphdr)) / 4;
+    ip_hdr->tos = 0;
+    ip_hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr) + sizeof(data));
+	ip_hdr->id = htons(111);
+	ip_hdr->frag_off = 0;
+	ip_hdr->ttl = 128;
+	ip_hdr->protocol = IPPROTO_ICMP;
+	ip_hdr->check = calculate_checksum((unsigned short *) &ip_hdr, ip_hdr->tot_len);
+	ip_hdr->saddr = inet_addr(ip_to_spoof_icmp);
+	ip_hdr->daddr = inet_addr(target_ip);
+    icmphdr.icmp_type = 0;
+    icmphdr.icmp_code = 0;
+    icmphdr.icmp_id = id; 
+    icmphdr.icmp_seq = seq;
+    //icmphdr.icmp_cksum = 0;
+    icmphdr.icmp_cksum = calculate_checksum((unsigned short *) (packet +ip_hdr->tot_len), ICMP_HDRLEN + datalen);
+    if (sendto (sock, packet, ip_hdr->tot_len, 0, (struct sockaddr *)&sin, sizeof(sin)) == -1) {
         perror("sendto() failed");
         return;
     }
-    /**
-    if (recvfrom (sock, &packet, ICMP_HDRLEN+datalen , 0, NULL, (socklen_t*)sizeof (struct sockaddr)) < 0)  {
-        perror("recvfrom() failed with error: %d");
-        return; 
-    }
-    */
     close(sock);
     return;
+    */
 }
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
@@ -154,7 +141,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: %s \n\n", packet + icmp_header_len);
             if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp) == 0) {
-                spoof_icmp(inet_ntoa(src_ip.sin_addr) ,ntohs(icmph->un.echo.sequence));
+                //send_ping_response(ip->ip_dst, ip->ip_src, data_bk, data_size, icmp->checksum, icmp->id, icmp->seq);
+                spoof_icmp(inet_ntoa(src_ip.sin_addr) ,icmph);
             }
             break;
         case 6:
@@ -176,7 +164,7 @@ int main() {
     struct bpf_program fp;
     bpf_u_int32 net = 0;
     char errbuf[PCAP_ERRBUF_SIZE]; 
-    handle = pcap_open_live("br-1a9996b508c9", 65536, 1, 100, errbuf);
+    handle = pcap_open_live(capture_device, 65536, 1, 100, errbuf);
     if (handle == NULL) {
         perror("Live session opening error");
     }
