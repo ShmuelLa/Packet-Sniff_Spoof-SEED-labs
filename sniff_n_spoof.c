@@ -64,8 +64,8 @@ void spoof_icmp(struct iphdr *target_ip_hdr) {
         if (sd < 0) {
             perror("failed to create socket");
         }
-        int enable = 1;
-        if (setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) != 0) {
+        int flag = 1;
+        if (setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &flag, sizeof(flag)) != 0) {
             perror("failed to set option");
         }
         if (sendto(sd, new_ip, ntohs(new_ip->tot_len), 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
@@ -74,17 +74,6 @@ void spoof_icmp(struct iphdr *target_ip_hdr) {
         close(sd);
     }
     /**
-    int sock;
-    struct sockaddr_in sin;
-    char buf[1024];
-    int on = 1;
-    int ip_hdr_len = target_ip_hdr->ip_hl*4;
-    // Create the IP/ICMP headers and attach to the buffer
-    struct ip *ip = (struct ip *)buf;
-    struct icmp *icmp = (struct icmp *) (ip + 1);
-    // Allocate buffer size
-    bzero(buf, sizeof(buf)); 
-
     ip->ip_v = target_ip_hdr->ip_v;
     ip->ip_hl = target_ip_hdr->ip_hl;
     ip->ip_tos = target_ip_hdr->ip_tos;
