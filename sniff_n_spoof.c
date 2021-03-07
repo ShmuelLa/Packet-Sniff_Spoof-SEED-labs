@@ -37,15 +37,48 @@ unsigned short calculate_checksum(unsigned short * paddress, int len) {
 	return answer;
 }
 
-void spoof_icmp(struct icmphdr *target_icmp_hdr, struct ip *target_ip_hdr) {
+void spoof_icmp(struct iphdr *target_ip_hdr) {
     printf("################################\n");
     printf("       Spoofing ICMP Packet\n");
     printf("################################\n\n");
+    int ip_header_len = target_ip_hdr->ihl * 4;
+    struct icmp *icmp = (struct icmp *) ((u_char *) target_ip_hdr + ip_header_len);
+    if (icmp->icmp_type == 8) {
+        const char buffer[1500];
+        memset((char *) buffer, 0, 1500);
+        memcpy((char *) buffer, target_ip_hdr, ntohs(target_ip_hdr->tot_len));
+        struct iphdr *new_ip = (struct iphdr *) buffer;
+        struct icmp *new_icmp = (struct icmp *) (buffer + ip_header_len);
+        char *data = (char *) new_icmp + sizeof(struct icmp);
+        new_icmp->icmp_type = 0;
+   	    new_icmp->icmp_cksum = 0;
+   	    new_icmp->icmp_cksum = calculate_checksum((unsigned short *)new_icmp,(ntohs(target_ip_hdr->tot_len)- ip_header_len));
+        new_ip->saddr = target_ip_hdr->daddr;
+        new_ip->daddr = target_ip_hdr->saddr;
+        new_ip->ttl = 50;
+        struct sockaddr_in d_addr;// address for sendto
+        bzero(&d_addr, sizeof(d_addr));
+        d_addr.sin_family = AF_INET;
+        d_addr.sin_addr = *(struct in_addr *) &target_ip_hdr->daddr;
+        int sd = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+        if (sd < 0) {
+            perror("failed to create socket");
+        }
+        int enable = 1;
+        if (setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable)) != 0) {
+            perror("failed to set option");
+        }
+        if (sendto(sd, target_ip_hdr, ntohs(new_ip->tot_len), 0, (struct sockaddr *) &(d_addr), sizeof(d_addr)) <= 0) {
+            perror("failed to sendto\n");
+        } 
+        close(sd);
+    }
+    /**
     int sock;
     struct sockaddr_in sin;
     char buf[1024];
     int on = 1;
-
+    int ip_hdr_len = target_ip_hdr->ip_hl*4;
     // Create the IP/ICMP headers and attach to the buffer
     struct ip *ip = (struct ip *)buf;
     struct icmp *icmp = (struct icmp *) (ip + 1);
@@ -67,12 +100,11 @@ void spoof_icmp(struct icmphdr *target_icmp_hdr, struct ip *target_ip_hdr) {
     sin.sin_family = AF_INET;
 	sin.sin_addr = ip->ip_dst;
 
-    // ICMP header
     icmp->icmp_type = 0;
     icmp->icmp_code = 0;
     //icmp->icmp_id = target_icmp_hdr->un.echo.id;
     icmp->icmp_seq = target_icmp_hdr->un.echo.sequence;
-    icmp->icmp_cksum = calculate_checksum((unsigned short *)icmp, 8);
+    icmp->icmp_cksum = calculate_checksum((unsigned short *)icmp, (ntohs(ip->ip_hl)-ip_hdr_len));
 
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     if (sock < 0) {
@@ -88,6 +120,7 @@ void spoof_icmp(struct icmphdr *target_icmp_hdr, struct ip *target_ip_hdr) {
 		perror("sendto() error");
         return;
 	}
+    */
 }
 
 void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet) {
@@ -116,8 +149,8 @@ void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *pa
             printf("Checksum: %d | Seq: %d \n", ntohs(icmph->checksum), ntohs(icmph->un.echo.sequence));
             printf("[+] Payload: %s \n\n", packet + icmp_header_len);
             if (strcmp(inet_ntoa(dst_ip.sin_addr),ip_to_spoof_icmp) == 0) {
-                struct ip *target_ip = (struct ip *) ip;
-                spoof_icmp(icmph, target_ip);
+                //struct ip *target_ip = (struct ip *) ip;
+                spoof_icmp(ip);
             }
             break;
         case 6:

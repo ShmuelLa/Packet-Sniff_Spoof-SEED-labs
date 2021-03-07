@@ -140,7 +140,6 @@ return;
 void
 print_app_usage(void)
 {
-
 	printf("Usage: %s [interface]\n", APP_NAME);
 	printf("\n");
 	printf("Options:\n");
