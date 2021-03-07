@@ -61,10 +61,10 @@ void spoof_icmp(char target_ip[], struct icmphdr *target_icmp_hdr) {
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
     setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &enable, sizeof(enable));
     dest_in.sin_family = AF_INET;
-    dest_in.sin_addr = inet_aton(ip_hdr->daddr);
+    dest_in.sin_addr = (in_addr_t) ip_hdr->daddr;
     sendto(sock, ip, ntohs(ip->iph_len), 0, (struct sockaddr *)&dest_in, sizeof(dest_in));
     close(sock);
-    return 0;
+    return;
 
 
 
