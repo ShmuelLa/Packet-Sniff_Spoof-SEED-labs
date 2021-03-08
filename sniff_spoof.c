@@ -45,9 +45,8 @@ void spoof_icmp(struct iphdr *sniffed_ip_packet) {
     memset((char *) buffer, 0, 1024); //set buffer
     /**Set the IP Header in the spoofed packet**/
     memcpy((char *) buffer, sniffed_ip_packet, ntohs(sniffed_ip_packet->tot_len));
-    struct iphdr *spoofed_ip = (struct iphdr *) buffer;
-    struct icmp *spoofed_icmp = (struct icmp *) (buffer + ip_header_len);
-    char *data = (char *) spoofed_icmp + sizeof(struct icmp);
+    struct iphdr *spoofed_ip = (struct iphdr *) buffer; //create spoofed ip header 
+    struct icmp *spoofed_icmp = (struct icmp *) (buffer + ip_header_len); //create spoofed icmp header add 
     spoofed_icmp->icmp_type = 0;
     spoofed_icmp->icmp_cksum = 0;
     spoofed_icmp->icmp_cksum = calculate_checksum((unsigned short *)spoofed_icmp,(ntohs(sniffed_ip_packet->tot_len)- ip_header_len));
@@ -55,10 +54,11 @@ void spoof_icmp(struct iphdr *sniffed_ip_packet) {
     spoofed_ip->daddr = sniffed_ip_packet->saddr;
     spoofed_ip->ttl = 128;
     bzero(&d_addr, sizeof(d_addr));
-    d_addr.sin_family = AF_INET;
+    d_addr.sin_family = AF_INET; //set destination address for the raw socket
     d_addr.sin_addr = *(struct in_addr *) &spoofed_ip->daddr;
-    int sd = socket(PF_INET, SOCK_RAW, IPPROTO_RAW);
+    int sd = socket(PF_INET, SOCK_RAW, IPPROTO_RAW); //create raw socket for IP protocols 
     if (sd < 0) perror("failed to create socket");
+    /** configure the raw socket **/
     if (setsockopt(sd, IPPROTO_IP, IP_HDRINCL, &sockflag, sizeof(sockflag)) != 0) perror("failed to set option");
     if (sendto(sd,spoofed_ip,ntohs(spoofed_ip->tot_len),0,(struct sockaddr *) &(d_addr),sizeof(d_addr)) <= 0) perror("failed to sendto"); 
     close(sd);
@@ -109,11 +109,11 @@ int main() {
     struct bpf_program fp;
     bpf_u_int32 net = 0;
     char errbuf[PCAP_ERRBUF_SIZE]; 
-    handle = pcap_open_live(capture_device, 65536, 1, 100, errbuf);
+    handle = pcap_open_live(capture_device, 65536, 1, 100, errbuf); //open capture device
     if (handle == NULL) {
         perror("Live session opening error");
     }
-    pcap_compile(handle, &fp, filter_exp, 0, net);      
+    pcap_compile(handle, &fp, filter_exp, 0, net);
     pcap_setfilter(handle, &fp);
     pcap_loop(handle, -1, got_packet, NULL);                
     pcap_close(handle);

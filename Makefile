@@ -2,8 +2,7 @@ CC = gcc
 CFLAG = -Wall -Wextra -g -o
 
 all: 
-	$(CC) hw4ping.c $(CFLAG) ping.o
-	$(CC) sniff_n_spoof.c $(CFLAG) sniff.o -lpcap
+	$(CC) sniff_spoof.c $(CFLAG) sniff.o -lpcap
 
 git:
 	git add -A
