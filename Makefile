@@ -24,7 +24,7 @@ hw4ping:
 	sudo ./hw4ping.o
 
 hw4sniff:
-	$(CC) hw4/sniff.c $(CFLAG) hw4ping.o
+	$(CC) hw4/sniff.c $(CFLAG) hw4sniff.o -lpcap
 	sudo ./hw4sniff.o
 
 clean:
