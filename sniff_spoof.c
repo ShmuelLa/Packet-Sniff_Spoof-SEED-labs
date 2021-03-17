@@ -12,7 +12,7 @@
 #include <stdlib.h>
 
 static int p_count = 1;
-static char filter_exp[] = "icmp";
+static char filter_exp[] = "icmp or tcp";
 static char capture_device[] = "br-1a9996b508c9"; 
 
 unsigned short calculate_checksum(unsigned short * paddress, int len) {
