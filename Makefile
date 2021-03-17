@@ -19,5 +19,13 @@ sniff:
 	$(CC) sniff.c $(CFLAG) sniff.o -lpcap
 	sudo ./sniff.o
 
+hw4ping:
+	$(CC) hw4/myping.c $(CFLAG) hw4ping.o
+	sudo ./hw4ping.o
+
+hw4sniff:
+	$(CC) hw4/sniff.c $(CFLAG) hw4ping.o
+	sudo ./hw4sniff.o
+
 clean:
 	rm -f *.o 
